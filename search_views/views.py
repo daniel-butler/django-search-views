@@ -70,21 +70,20 @@ class SearchListView(BaseListView, FormMixin, TemplateResponseMixin):
             if len(self.groups_for_userlist):
                 pot_users = pot_users.filter(groups__name__in = self.groups_for_userlist)
             pot_users = pot_users.distinct().order_by('username')
-            user_choices = tuple([(user.id, str(user)) for user in pot_users])
+            user_choices = tuple((user.id, str(user)) for user in pot_users)
             kwargs['user_choices'] = user_choices
 
         return kwargs
 
     def get_search_query(self, request):
-        search_query = self.filter_class.build_q(request.GET, request)
-        return search_query
+        return self.filter_class.build_q(request.GET, request)
 
     def get_order_by_fields(self, request):
         if self.order_field and self.order_field in request.GET and request.GET[self.order_field]:
             order_by = request.GET[self.order_field]
             order_by_fields = order_by.split(",")
             #order_by_fields = [x for x in order_by_fields if x.replace("-","") in [field for [field, caption] in self.allowed_orderings]]
-            order_by_fields = [x for x in order_by_fields]
+            order_by_fields = list(order_by_fields)
         else:
             order_by_fields = []
         return order_by_fields
@@ -100,9 +99,6 @@ class SearchListView(BaseListView, FormMixin, TemplateResponseMixin):
                 object_list = object_list.filter(search_query)
             except ValueError as e:
                 search_errors.append(get_exception_error_msg(e))
-            except ValidationError as e:
-                search_errors.append(get_exception_error_msg(e))
-
         if order_by_fields:
             object_list = object_list.order_by(*order_by_fields)
 
@@ -118,16 +114,13 @@ class SearchListView(BaseListView, FormMixin, TemplateResponseMixin):
         search_errors_fields = []
         search_errors = []
 
-        # From ProcessFormMixin
-        form_class = self.get_form_class()
-        if form_class:
+        if form_class := self.get_form_class():
             self.form = self.get_form(form_class)
         else:
             self.form = None
 
         self.object_list = self.get_object_list(request, search_errors=search_errors)
-        search_query = self.get_search_query(request)
-        if search_query:
+        if search_query := self.get_search_query(request):
             self.filtering = True
 
         allow_empty = self.get_allow_empty()
@@ -167,17 +160,13 @@ class SearchListView(BaseListView, FormMixin, TemplateResponseMixin):
         context['max_num_orderings'] = min(self.max_num_orderings, len(self.allowed_orderings))
 
 
-        if self.form:
-            context['cleaned_data'] = self.form.fields
-        else:
-            context['cleaned_data'] = {}
-
+        context['cleaned_data'] = self.form.fields if self.form else {}
         if len(search_errors):
             messages.add_message(self.request, messages.ERROR, ';'.join(search_errors))
 
 
         # Chance to process context after pagination
-        if not 'request' in context:
+        if 'request' not in context:
             context['request'] = request
         self.before_render(context)
 

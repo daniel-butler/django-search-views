@@ -23,7 +23,7 @@ class TestFilter(TestCase):
             a_int = idx
             b_char = contents[idx]
             c_text = contents[9-idx]
-            d_bool = bool(i < 50)
+            d_bool = i < 50
             instance = SomeModel.objects.create(a_int=a_int, b_char=b_char, c_text=c_text, d_bool=d_bool)
 
 

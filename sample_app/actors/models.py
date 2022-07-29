@@ -7,4 +7,4 @@ class Actor(models.Model):
     age = models.IntegerField()
 
     def __unicode__(self):
-        return "%s %s" % (self.name, self.surname)
+        return f"{self.name} {self.surname}"
