@@ -14,7 +14,7 @@ def build_q(fields_dict, params_dict, request=None):
         if fieldname in params_dict and params_dict[fieldname] != '' and params_dict[fieldname] != []:
             or_query = None
 
-            if type(search_field) == type(list()):
+            if type(search_field) == type([]):
                 field_list = search_field
                 search_operator = "__icontains"
                 fixed_filters = None
@@ -45,28 +45,31 @@ def build_q(fields_dict, params_dict, request=None):
                     if value_mapper:
                         request_field_value = [value_mapper(value) for value in request_field_value]
                 else:
-                    request_field_value = params_dict[fieldname] if not value_mapper else value_mapper(params_dict[fieldname])
+                    request_field_value = (
+                        value_mapper(params_dict[fieldname])
+                        if value_mapper
+                        else params_dict[fieldname]
+                    )
+
 
                 if not custom_query_method:
                     fieldname_key = model_field + search_operator
                     filter_dict = { fieldname_key : request_field_value}
-                    if not or_query:
-                        or_query = Q(**filter_dict)
-                    else:
-                        or_query = or_query | Q(**filter_dict)
+                    or_query = or_query | Q(**filter_dict) if or_query else Q(**filter_dict)
                 else:
                     #TODO: this is a hack for using request data in custom_query
                     #it would be better to pass ALSO the request to custom_query_method
-                    if not request:
-                        cf = custom_query_method(model_field, request_field_value, params_dict)
-                    else:
-                        cf = custom_query_method(model_field, request_field_value, request)
+                    cf = (
+                        custom_query_method(
+                            model_field, request_field_value, request
+                        )
+                        if request
+                        else custom_query_method(
+                            model_field, request_field_value, params_dict
+                        )
+                    )
 
-                    if not or_query:
-                        or_query = cf
-                    else:
-                        or_query = or_query | cf
-
+                    or_query = or_query | cf if or_query else cf
             #fixed_filters
             fixed_filters_q = Q()
             #fixed_filters must return a Q object or None
@@ -104,5 +107,5 @@ class BaseFilter(object):
         sfdict = {}
         for klass in tuple(cls.__bases__) + (cls, ):
             if hasattr(klass, 'search_fields'):
-                sfdict.update(klass.search_fields)
+                sfdict |= klass.search_fields
         return sfdict
